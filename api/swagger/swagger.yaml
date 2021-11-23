@@ -1,0 +1,612 @@
+openapi: 3.0.1
+info:
+  title: |
+    Сервис по выставлению инвойса и мониторингу его статуса
+  description: |
+  version: 0.0.1
+  contact:
+    email: ay@bloomzed.com
+servers:
+  - url: "http://79.142.93.158:3333"
+security:
+  - BasicAuth: []
+
+components:
+  parameters:
+    idempotencyParam:
+      in: header
+      name: X-Idempotency
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Ключ идемпотентности
+  schemas:
+    PaymentCreated:
+      type: object
+      required:
+        - id
+        - paymentPage
+      properties:
+        id:
+          type: string
+          description: уникальный идинтификатов инвойса
+          example: "6029f4d560d1045ad353a3f4"
+        paymentPage:
+          type: string
+          description: страница платежа
+          example: "http://localhost:3000/6029f4d560d1045ad353a3f4"
+    Callbacks:
+      type: object
+      properties:
+        resultUrl:
+          type: string
+          description: "url куда отправляется результат платежа"
+          example: "https://your-web-page.com/result"
+        successUrl:
+          type: string
+          description: "url куда возвращаем клиента после успешной оплаты"
+          example: "https://your-web-page.com/success"
+        failureUrl:
+          type: string
+          description: "url куда возвращаем клиента после не удачной оплаты"
+          example: "https://your-web-page.com/fail"
+        backUrl:
+          type: string
+          description: "url куда возвращаем клиента если он нажал кнопку назад"
+          example: "https://your-web-page.com/back"
+    Period:
+      required:
+        - fromDate
+      type: object
+      properties:
+        fromDate:
+          type: string
+          description: дата с
+          example: "2020-11-11T16:00:00"
+        toDate:
+          type: string
+          description: дата по
+          example: "2020-12-11T16:00:00"
+    Amounts:
+      type: object
+      properties:
+        bottomAmount:
+          $ref: '#/components/schemas/Amount'
+        topAmount:
+          $ref: '#/components/schemas/Amount'
+    Filter:
+      type: object
+      required:
+        - period
+      properties:
+        period:
+          $ref: '#/components/schemas/Period'
+        amounts:
+          $ref: '#/components/schemas/Amounts'
+        status:
+          type: string
+          description: статус операции
+          example: "один из: invoice created, canceled, approved"
+    Currency:
+      type: object
+      required:
+        - code
+        - minorUnits
+      properties:
+        code:
+          type: string
+          description: "валюта"
+          example: "KZT"
+        minorUnits:
+          type: integer
+          description: "минорные единицы"
+          example: 100
+    Amount:
+      type: object
+      required:
+        - sum
+        - currency
+      properties:
+        sum:
+          type: integer
+          description: "сумма"
+          example: 10000
+        currency:
+          $ref: '#/components/schemas/Currency'
+    Options:
+      type: object
+      properties:
+        callbacks:
+          $ref: '#/components/schemas/Callbacks'
+        publicOffer:
+          type: string
+          description: "Ссылка на публичную оферту"
+          example: "https://you-web-page.kz/public-offer"
+        promoCode:
+          type: string
+          description: "Промокод, если есть"
+          example: "AVf12312"
+    Status:
+      type: object
+      required:
+        - code
+      properties:
+        code:
+          type: string
+          description: "код статуса"
+          example: "approved"
+        error_description:
+          type: string
+          description: "текстовая описание ошибки в случае возникновения"
+          example: "ошибка выставления инвойса"
+    PaymentRequest:
+      type: object
+      required:
+        - paymentType
+        - amount
+        - description
+      properties:
+        paymentType:
+          type: integer
+          description: "тип платежа для выставление инвойса мерчанту"
+          example: 1
+        amount:
+          $ref: '#/components/schemas/Amount'
+        description:
+          type: string
+          description: "описание платежа"
+          example: "опалата заказк №123123"
+        phoneNumber:
+          type: string
+          example: "77771234567"
+          description: "номер телефона клиента в формате 77771234567"
+        options:
+          $ref: '#/components/schemas/Options'
+        createNotExistedUse:
+          type: boolean
+          description: "если клиента нету в системе, регистрируем его перед выставлением счета"
+          example: false
+        orderId:
+          type: string
+          description: "уникальный идентификатор в системе мерчанта"
+          example: "qwerty12345"
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        fieldsApp:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldsApp"
+        language:
+          type: string
+          description: "язык платежный страницы (kz, ru, en)"
+          example: "ru"
+    Product:
+      type: object
+      required:
+        - id
+        - name
+        - amount
+        - count
+      properties:
+        id:
+          type: integer
+          description: "уникальный идентификатор продукта"
+          example: 12345
+        name:
+          type: string
+          description: "наименование товара"
+          example: "apple Iphone XR"
+        amount:
+          type: number
+          description: "цена товара"
+          example: 150000
+        count:
+          type: integer
+          description: "количество товара"
+          example: 1
+        image:
+          type: string
+          description: "фотография товара"
+          example: "http://yourSite/image/123"
+    FieldsApp:
+      type: object
+      required:
+        - fieldsName
+        - fieldsType
+        - fieldsMaxLenght
+        - fieldsMinLenght
+      properties:
+        fieldsName:
+          type: string
+          description: ""
+          example: "накладная"
+        fieldsType:
+          type: string
+          description: "тип поля, сейчас доступны типы number, text"
+          example: "text"
+        fieldsMaxLenght:
+          type: integer
+          description: "минимальная длина поля"
+          example: 0
+        fieldsMinLenght:
+          type: integer
+          description: "максимальная длина поля"
+          example: 100
+    Payment:
+      type: object
+      properties:
+        paymentType:
+          type: integer
+          description: "тип платежа для выставление инвойса мерчанту"
+          example: 1
+        amount:
+          $ref: '#/components/schemas/Amount'
+        description:
+          type: string
+          description: "описание платежа"
+          example: "опалата заказк №123123"
+        phoneNumber:
+          type: string
+          example: "77771234567"
+          description: "номер телефона клиента в формате 77771234567"
+        options:
+          $ref: '#/components/schemas/Options'
+        createNotExistedUse:
+          type: boolean
+          description: "если клиента нету в системе, регистрируем его перед выставлением счета"
+          example: false
+        orderId:
+          type: string
+          description: "уникальный идентификатор в системе мерчанта"
+          example: "qwerty12345"
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        client:
+          $ref: "#/components/schemas/Client"
+        fieldsApp:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldsApp"
+        language:
+          type: string
+          description: "язык платежный страницы (kz, ru, en)"
+          example: "ru"
+        status:
+          $ref: '#/components/schemas/Status'
+    Payments:
+      type: array
+      items:
+        $ref: "#/components/schemas/Payment"
+    BadRequest:
+      type: object
+      required:
+        - code
+        - message
+        - devMessage
+      properties:
+        code:
+          type: number
+          format: integer
+          description: http код результата запроса
+          example: 400
+        message:
+          type: string
+          description: сообщение об ошибке для клиента
+          example: полученный json не валидный
+        devMessage:
+          type: string
+          description: сообщение об ошибке для разработчиков
+          example: "can not validate provided fieldsKey: 'ParticipantsFiler.MerchantID' Error:Field validation for 'MerchantID' failed on the 'required' tag"
+    InternalServerError:
+      type: object
+      required:
+        - code
+        - message
+        - devMessage
+      properties:
+        code:
+          type: number
+          format: integer
+          description: http код результата запроса
+          example: 500
+        message:
+          type: string
+          description: сообщение об ошибке для клиента
+          example: полученный json не валидный
+        devMessage:
+          type: string
+          description: сообщение об ошибке для разработчиков
+          example: произошла ошибка при выполнений запроса
+    ClientNotFound:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: number
+          format: integer
+          description: http код результата запроса
+          example: 200
+        message:
+          type: string
+          description: сообщение об ошибке для клиента
+          example: данный немер не зарегистрирован в системе bloomzed
+    Client:
+      type: object
+      required:
+        - id
+        - walletId
+        - phoneNumber
+      properties:
+        id:
+          type: string
+          description: уникальный идентификатор клиента совершивший транзакцию
+          example: "123"
+        walletId:
+          type: string
+          description: уникальный идентификатор кошелька клиента совершивший транзакцию
+          example: "124521"
+        phoneNumber:
+          type: string
+          description: номер телефона
+          example: 77018194496
+        iin:
+          type: string
+          description: иин клиента
+          example: "952201300431"
+        firstName:
+          type: string
+          description: имя клиента
+          example: "Иван"
+        lastName:
+          type: string
+          description: фамилия клиента
+          example: "Иванов"
+        patronymic:
+          type: string
+          description: отчество клиента
+          example: "Иванович"
+    ClientInfo:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/Client"
+        kyc:
+          type: object
+          properties:
+            code:
+              type: integer
+              description: код статуса
+              example: 0
+            description:
+              type: string
+              description: описание статуса
+              example: не идентифицирован
+  securitySchemes:
+    BasicAuth:
+      description: |
+        Для аутентификации используется [HTTP Basic Auth](https://en.wikipedia.org/wiki/Basic_access_authentication).<br>
+        В заголовках запросов в качестве имени пользователя необходимо передать ваш *SID*,<br>
+        в качестве пароля — ваш *API_PASSWORD*.
+      type: http
+      scheme: basic
+
+
+tags:
+  - name: Идемпотентность API
+    description: |
+      Идемпотентность — свойство API  при повторном запросе выдавать тот же результат, что и при первом.<br>
+      Это значит, что при повторений одинаковых запросов обработан будет
+      только один запрос, а все ответы будут одинаковыми.
+
+      Для обеспечения идемпотентности, в запросах необходимо передавать заголовок `X-Idempotency`
+      с уникальным идентификатором. Рекомендуется использовать [UUID](https://ru.wikipedia.org/wiki/UUID) версии 4.
+
+paths:
+  /payments:
+    post:
+      parameters:
+        - $ref: '#/components/parameters/idempotencyParam'
+      operationId: createPayment
+      tags:
+        - Платежи
+      summary: Создание платежа
+      requestBody:
+        description: Запрос на создание нового платежа
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentRequest'
+      responses:
+        200:
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentCreated'
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        500:
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalServerError'
+    get:
+      operationId: getPayments
+      tags:
+        - Платежи
+      summary: Получение информации о платежах мерчанта по фильтрам
+      parameters:
+        - name: filters
+          in: query
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Filter'
+      responses:
+        200:
+          description: Актуальный объект платежа
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payments'
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        500:
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalServerError'
+
+  /payments/{id}:
+    get:
+      operationId: getPayment
+      tags:
+        - Платежи
+      summary: Получение информации о платеже
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Список клиентов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        500:
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalServerError'
+
+  /payments/{id}/invoice:
+    post:
+      tags:
+        - Платежи
+      summary: запрос на выставление инвойса
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: phoneNumber
+          in: query
+          required: true
+          description: "номер телефона на который выставляется инвойс"
+          content:
+            application/json:
+              schema:
+                type: string
+      responses:
+        200:
+          description: Объект платежа со статусом "invoice created"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        500:
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalServerError'
+  /payments/{id}/cancel:
+    post:
+      operationId: createPaymentRefund
+      tags:
+        - Платежи
+      summary: Отмена платежа
+      description: Отмена платежа, если клиент не оплатил инвойс в течений 10 минут
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Объект платежа со статусом "cancelled"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        500:
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalServerError'
+  /user:
+    get:
+      tags:
+        - Получение информаций по клиенту через номер телефона
+      parameters:
+        - in: query
+          name: phoneNumber
+          schema:
+            type: string
+            description: номер телефона клиента
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ClientInfo'
+                  - $ref: '#/components/schemas/ClientNotFound'
+        400:
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        500:
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalServerError'
+

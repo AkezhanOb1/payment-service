@@ -1,0 +1,29 @@
+version: '3'
+services:
+  swagger-ui:
+    image: swaggerapi/swagger-ui
+    container_name: "payment-swagger"
+    ports:
+      - "9995:8080"
+    volumes:
+      - .api/swagger/swagger.yaml:/swagger.yaml
+    environment:
+      SWAGGER_JSON: /swagger.yaml
+    restart: always
+  app:
+    container_name: "payment-service"
+    environment:
+      TZ: "Asia/Almaty"
+      command: >
+        sh -c "ln -snf /usr/share/zoneinfo/$TZ /etc/localtime &&
+        echo $TZ > /etc/timezone
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ulimits:
+      nofile:
+        soft: 98304
+        hard: 98304
+    ports:
+      - "8080:8080" # Forward the exposed port 8080 on the container to port 8080 on the host machine
+    restart: always
