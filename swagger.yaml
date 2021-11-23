@@ -1,13 +1,10 @@
 openapi: 3.0.1
 info:
-  title: |
-    Сервис по выставлению инвойса и мониторингу его статуса
+  title: payment service
   description: |
   version: 0.0.1
-  contact:
-    email: ay@bloomzed.com
 servers:
-  - url: "http://79.142.93.158:3333"
+  - url: "http://local:3333"
 security:
   - BasicAuth: []
 

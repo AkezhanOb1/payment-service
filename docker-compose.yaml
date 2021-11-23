@@ -6,7 +6,7 @@ services:
     ports:
       - "9995:8080"
     volumes:
-      - .api/swagger/swagger.yaml:/swagger.yaml
+      - .api/swagger/swagger.yaml:.api/swagger/swagger.yaml
     environment:
       SWAGGER_JSON: /swagger.yaml
     restart: always
